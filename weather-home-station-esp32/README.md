@@ -16,7 +16,7 @@ In this project, we will build a simple home weather station using the ESP32 mic
 
 <img src="./assets/img/Schematic.svg" alt="Wiring Diagram" width="600" height="400">
 
-### Code
+### Code 
 
 1. `rgb_led.h`
 
@@ -38,10 +38,10 @@ In this project, we will build a simple home weather station using the ESP32 mic
    // RGB LED configuration
    typedef struct 
    {
-   	int channel;
-   	int gpio;
-   	int mode;
-   	int timer_index;
+    int channel;
+    int gpio;
+    int mode;
+    int timer_index;
    } ledc_info_t;
    ```
 
@@ -184,5 +184,204 @@ In this project, we will build a simple home weather station using the ESP32 mic
         rgb_led_set_color(0, 255, 153);
     }
     ```
+
+## Part 2: WiFi - SoftAp
+
+## `rgb_led.c` and `rgb_led.h` - RGB LED Control Logic
+
+These files implement the RGB LED control logic, providing functions to initialize the LED hardware and set its color to indicate different system/application states. The implementation uses the ESP32's LEDC (LED Controller) peripheral for PWM-based color mixing.
+
+### Key Features
+
+- **Hardware Abstraction:**
+  - Defines a configuration structure (`ledc_info_t`) for each color channel (red, green, blue), including channel, GPIO, mode, and timer index.
+  - Uses macros to specify the GPIO pins and number of channels for the RGB LED.
+
+- **Initialization:**
+  - The static function `rgb_led_pmw_init()` sets up the LEDC timer and configures each color channel for PWM output. It ensures the timer and channels are only initialized once per boot.
+
+- **Color Setting:**
+  - The static function `rgb_led_set_color(uint8_t red, uint8_t green, uint8_t blue)` sets the duty cycle for each color channel, allowing for 8-bit color mixing (0-255 per channel).
+
+- **Status Indication Functions:**
+  - `rgb_led_wifi_app_started()`: Sets the LED to a specific color to indicate the WiFi application has started.
+  - `rgb_led_http_server_started()`: Sets the LED to a different color to indicate the HTTP server has started.
+  - `rgb_led_wifi_connected()`: Sets the LED to another color to indicate a successful WiFi connection.
+  - Each of these functions ensures the LED is initialized before setting the color.
+
+### Function Reference (`rgb_led.c` and `rgb_led.h`)
+
+- **rgb_led_pmw_init(void):**
+  Static. Initializes the LEDC timer and all RGB channels for PWM output. Called automatically by the public status functions if not already initialized.
+
+- **rgb_led_set_color(uint8_t red, uint8_t green, uint8_t blue):**
+  Static. Sets the PWM duty cycle for each color channel, mixing the desired color. Used internally by the status indication functions.
+
+- **rgb_led_wifi_app_started(void):**
+  Public. Sets the LED to a color (e.g., purple) to indicate the WiFi application has started.
+
+- **rgb_led_http_server_started(void):**
+  Public. Sets the LED to a color (e.g., orange) to indicate the HTTP server has started.
+
+- **rgb_led_wifi_connected(void):**
+  Public. Sets the LED to a color (e.g., green) to indicate a successful WiFi connection.
+
+### Design Notes
+
+- The use of static functions for initialization and color setting ensures encapsulation and prevents accidental re-initialization or misuse.
+- The color values for each status are chosen for clear visual distinction and can be customized as needed.
+- The header file (`rgb_led.h`) provides only the public API for status indication, hiding the lower-level details from other modules.
+
+Refer to the source code in `main/rgb_led.c` and `main/rgb_led.h` for further details and implementation specifics.
+
+During this part, we implement the WiFi SoftAP functionality to allow the ESP32 to create a WiFi access point. The implmentation also included the ability to manage WiFi and other tasks using FreeRTOS. Here are the key files and their contents:
+
+## `wifi_app.c` - WiFi Application Logic
+
+The `wifi_app.c` file contains the main logic for initializing, configuring, and managing the WiFi application on the ESP32. It handles WiFi and IP events, manages the FreeRTOS task and message queue for WiFi operations, and controls the RGB LED to indicate system status. Below is an overview of its structure and functionality:
+
+### Key Features
+
+- **Event Handling:**
+  - Implements a static event handler (`wifi_app_event_handler`) for WiFi and IP events, such as AP start/stop, station connect/disconnect, and IP acquisition.
+  - Logs each event and can trigger actions (e.g., LED color changes) based on the event type.
+
+- **Initialization Functions:**
+  - `wifi_app_event_handler_init()`: Registers the event handler for WiFi and IP events.
+  - `wifi_app_default_wifi_init()`: Initializes the TCP/IP stack and configures the default WiFi settings, including creating network interfaces for both station and access point modes.
+  - `wifi_app_soft_ap_config()`: Configures the ESP32 as a WiFi SoftAP, sets static IP, gateway, and netmask, and starts the DHCP server for clients.
+
+- **Task and Queue Management:**
+  - Defines a FreeRTOS task (`wifi_app_task`) that initializes the WiFi system, starts the WiFi driver, and processes messages from a queue to handle application-level events.
+  - Uses a message queue (`wifi_app_queue_handle`) to communicate between different parts of the application, allowing asynchronous event handling.
+
+- **LED Status Indication:**
+  - Calls functions from `rgb_led.c` to set the RGB LED color based on the current WiFi application state (e.g., app started, HTTP server started, WiFi connected).
+
+- **Public API:**
+  - `wifi_app_send_message()`: Sends messages to the WiFi application queue for event-driven processing.
+  - `wifi_app_start()`: Initializes the application, sets up the LED, disables default WiFi logging, creates the message queue, and starts the main WiFi application task.
+
+### Example Flow
+
+1. **Startup:** `wifi_app_start()` is called, which sets the initial LED color, disables verbose WiFi logs, creates the message queue, and starts the main task.
+2. **Task Execution:** The main task (`wifi_app_task`) initializes the event handler, network stack, and SoftAP configuration, then starts the WiFi driver.
+3. **Event Handling:** As WiFi and IP events occur, the registered event handler logs them and can trigger further actions (e.g., sending messages to the queue).
+4. **Queue Processing:** The main task waits for messages (such as starting the HTTP server or indicating a successful connection) and updates the LED or performs other actions accordingly.
+
+This modular approach allows for easy expansion of WiFi-related features and robust event-driven management of the ESP32's networking capabilities.
+
+### Function Reference (`wifi_app.c`)
+
+- **wifi_app_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data):**
+  Handles WiFi and IP events. Logs event types such as AP start/stop, station connect/disconnect, and IP acquisition. Can be extended to trigger additional actions (e.g., LED updates or queue messages) based on event type.
+
+- **wifi_app_event_handler_init():**
+  Registers the event handler for both WiFi and IP events using ESP-IDF's event system. Ensures all relevant events are captured and processed by the application.
+
+- **wifi_app_default_wifi_init():**
+  Initializes the TCP/IP stack and configures the default WiFi settings. Creates network interfaces for both station and access point modes, preparing the ESP32 for dual-mode operation.
+
+- **wifi_app_soft_ap_config():**
+  Configures the ESP32 as a WiFi SoftAP (Access Point). Sets up the SSID, password, channel, visibility, authentication mode, and beacon interval. Assigns a static IP, gateway, and netmask, and starts the DHCP server for client devices.
+
+- **wifi_app_task(void *pvParameters):**
+  The main FreeRTOS task for the WiFi application. Initializes event handling, network stack, and SoftAP configuration, then starts the WiFi driver. Sends an initial message to start the HTTP server. Enters a loop to process messages from the queue, handling events such as HTTP server start, connection attempts, and successful connections (with corresponding LED updates).
+
+- **wifi_app_send_message(wifi_app_message_e msgID):**
+  Sends a message to the WiFi application's FreeRTOS queue. Used for asynchronous, event-driven communication between different parts of the application (e.g., from event handlers to the main task).
+
+- **wifi_app_start():**
+  Entry point for starting the WiFi application. Sets the initial LED color, disables default WiFi logging, creates the message queue, and starts the main WiFi application task pinned to a specific core.
+
+### Design Notes
+
+- The use of FreeRTOS tasks and queues allows for responsive, event-driven application logic, making it easy to expand with new features (such as OTA updates or web server endpoints).
+- The modular structure separates event handling, initialization, and application logic, improving maintainability and clarity.
+- LED status indication provides immediate visual feedback for key application states, aiding in debugging and user experience.
+
+Refer to the source code in `main/wifi_app.c` for further details and implementation specifics.
+
+1. `tasks_common.h`
+
+   - This header file contains common definitions for the FreeRTOS tasks, including stack size, priority, and core ID for the WiFi application task.
+
+   ```c
+   #ifndef MAIN_TASKS_COMMON_H_
+   #define MAIN_TASKS_COMMON_H_
+
+   // WiFi application task
+   #define WIFI_APP_TASK_STACK_SIZE            4096
+   #define WIFI_APP_TASK_PRIORITY              5
+   #define WIFI_APP_TASK_CORE_ID               0
+
+   #endif /* MAIN_TASKS_COMMON_H_ */
+   ```
+
+2. `wifi_app.h`
+
+    - This header file defines the WiFi application settings
+    ```c
+    // WiFi application settings
+    #define WIFI_AP_SSID                "ESP32"             // AP name
+    #define WIFI_AP_PASSWORD            "password"          // AP password
+    #define WIFI_AP_CHANNEL             1                   // AP channe;
+    #define WIFI_AP_SSID_HIDDEN         0                   // AP visibility
+    #define WIFI_AP_MAX_CONNECTIONS     5                   // AP max connections
+    #define WIFI_AP_BEACON_INTERVAL     100                 // AP beacon: 100ms as recommend
+    #define WIFI_AP_IP                  "192.168.0.1"       // AP default ip
+    #define WIFI_AP_GATEWAY             "192.168.0.1"       // AP default gatewate (should be the same as the IP)
+    #define WIFI_AP_NETMASK             "255.255.2255.0"    // AP netmask
+    #define WIFI_AP_BANDWIDTH           WIFI_BW_HT20        // AP bandwidth 20 MHz (other option is 40 MHz) 
+    #define WIFI_STA_POWER_SAVE         WIFI_PS_NONE        // Power save is not used
+    #define MAX_SSID_LENGTH             32                  // IEEE stadard maximum
+    #define MAX_PASSWORD_LENGTH         64                  // IEEE stadard maximum
+    #define MAX_CONNECTION_RETRIES      5                   // Retry number on disconnect
+    ```
+
+    - The header file also contains the function prototypes for initializing the WiFi application and handling WiFi events.
+
+    ```c
+    /**
+     * Sends a message to the queque
+    * @param msgID message ID from the wifi_app_message_e enum.
+    * @return pdTRUE if an item was succesfully sent to the queue, otherwise pdFALSE.
+    * @note Expand the parameter list based on  your requiredments e.g. how you've expanded the wifi_app_queue_message_t
+    */
+    BaseType_t wifi_app_send_message(wifi_app_message_e msgID);
+
+    /**
+    * Starts the WiFi RROS task
+    */
+    void wifi_app_start(void);
+    ```
+
+    - We also define an enum for the WiFi application messages that can be sent to the queue.
+
+    ```c
+    /**
+    * Message IDs fot the WiFi application task
+    * @note Expand this based on thee application requirements
+    */
+    typedef enum wifi_app_message
+    {
+        WIFI_APP_MSG_START_HTTP_SERVER = 0,
+        WIFI_APP_MSG_CONNECTING_FROM_HTTP_SERVER,
+        WIFI_APP_MSG_STA_CONNECTED_GOT_IP,
+
+    } wifi_app_message_e;
+
+    /**
+    * Structure for the message queque
+    * @note Expand this based on the application requirements e.g. add another type and parameters as required
+    */
+    typedef struct  wifi_app_queue_message
+    {
+        wifi_app_message_e msgID;
+    } wifi_app_queue_message_t;
+    ``` 
+
+
+
 
    

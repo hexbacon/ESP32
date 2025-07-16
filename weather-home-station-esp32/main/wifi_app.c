@@ -5,7 +5,7 @@
  *      Author: christophermena
  */
 
- #include "freertos/FreeRTOS.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
 
@@ -51,6 +51,7 @@ static void wifi_app_event_handler(void *arg, esp_event_base_t event_base, int32
 
 			case WIFI_EVENT_AP_STACONNECTED:
 				ESP_LOGI(TAG, "WIFI_EVENT_AP_STACONNECTED");
+                //rgb_led_wifi_connected();
 				break;
 
 			case WIFI_EVENT_AP_STADISCONNECTED:
@@ -121,14 +122,14 @@ static void wifi_app_soft_ap_config(void)
 	wifi_config_t ap_config =
 	{
 		.ap = {
-				.ssid = WIFI_AP_SSID,
-				.ssid_len = strlen(WIFI_AP_SSID),
-				.password = WIFI_AP_PASSWORD,
-				.channel = WIFI_AP_CHANNEL,
-				.ssid_hidden = WIFI_AP_SSID_HIDDEN,
-				.authmode = WIFI_AUTH_WPA2_PSK,
-				.max_connection = WIFI_AP_MAX_CONNECTIONS,
-				.beacon_interval = WIFI_AP_BEACON_INTERVAL,
+				.ssid               = WIFI_AP_SSID,
+				.ssid_len           = strlen(WIFI_AP_SSID),
+				.password           = WIFI_AP_PASSWORD,
+				.channel            = WIFI_AP_CHANNEL,
+				.ssid_hidden        = WIFI_AP_SSID_HIDDEN,
+				.authmode           = WIFI_AUTH_WPA2_PSK,
+				.max_connection     = WIFI_AP_MAX_CONNECTIONS,
+				.beacon_interval    = WIFI_AP_BEACON_INTERVAL,
 		},
 	};
 
