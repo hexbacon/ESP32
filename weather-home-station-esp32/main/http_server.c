@@ -295,7 +295,7 @@ esp_err_t http_server_OTA_update_handler(httpd_req_t *req)
  */
 esp_err_t http_server_OTA_status_handler(httpd_req_t *req)
 {
-    char otaJSON[100];
+    char otaJSON[256];
 
     ESP_LOGI(TAG, "OATstatus is requested.");
 

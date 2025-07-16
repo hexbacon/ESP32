@@ -191,7 +191,6 @@ static void wifi_app_task(void *pvParameters)
 
 				case WIFI_APP_MSG_CONNECTING_FROM_HTTP_SERVER:
 					ESP_LOGI(TAG, "WIFI_APP_MSG_CONNECTING_FROM_HTTP_SERVER");
-
 					break;
 
 				case WIFI_APP_MSG_STA_CONNECTED_GOT_IP:
