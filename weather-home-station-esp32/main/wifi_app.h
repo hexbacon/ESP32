@@ -1,5 +1,5 @@
 /*
- * rgb_led.h
+ * wifi_app.h
  *
  *  Created on: Jul 15, 2025
  *      Author: christophermena
