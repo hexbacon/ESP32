@@ -7,6 +7,8 @@
 
 #include "esp_http_server.h"
 #include "esp_log.h"
+#include "esp_ota_ops.h"
+#include "sys/param.h"
 
 #include "http_server.h"
 #include "tasks_common.h"
@@ -14,6 +16,9 @@
 
 // Tag used for ESP serial console messages
 static const char TAG[] = "http_server";
+
+// Firmware update status
+static int g_fw_update_status = OTA_UPDATE_PENDING;
 
 // HTTP server task handle
 static httpd_handle_t http_server_handle = NULL;
@@ -67,17 +72,12 @@ static void http_server_monitor(void *pvParameters)
 
             case HTTP_MSG_OTA_UPDATE_SUCCESSFUL:
                 ESP_LOGI(TAG, "HTTP_MSG_OTA_UPDATE_SUCCESSFUL");
-
+                g_fw_update_status = OTA_UPDATE_SUCCESSFUL;
                 break;
 
             case HTTP_MSG_OTA_UPDATE_FAILED:
                 ESP_LOGI(TAG, "HTTP_MSG_OTA_UPDATE_FAILED");
-
-                break;
-
-            case HTTP_MSG_OTA_UPDATE_INITIALIZED:
-                ESP_LOGI(TAG, "HTTP_MSG_OTA_UPDATE_INITIALIZED");
-
+                g_fw_update_status = OTA_UPDATE_FAILED;
                 break;
 
             default:
