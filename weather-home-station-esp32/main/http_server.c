@@ -182,7 +182,7 @@ esp_err_t http_server_OTA_update_handler(httpd_req_t *req)
     do
     {
         // Read the data from the request
-        if ((recv_len == httpd_req_recv(req, ota_buff, MIN(content_length, sizeof(ota_buff)))) < 0)
+        if ((recv_len = httpd_req_recv(req, ota_buff, MIN(content_length, sizeof(ota_buff)))) < 0)
         {
             // Check if timeout occurred
             if (recv_len == HTTPD_SOCK_ERR_TIMEOUT)
@@ -215,7 +215,7 @@ esp_err_t http_server_OTA_update_handler(httpd_req_t *req)
             }
             else
             {
-                printf("http_server_OTA_update_handler: Writing to partition subtype %d at offset 0x%x\r\n", update_partition->subtype, update_partition->address);
+                printf("http_server_OTA_update_handler: Writing to partition subtype %d at offset 0x%lx\r\n", update_partition->subtype, update_partition->address);
             }
 
             // Wrtie the first part of the data
@@ -236,7 +236,7 @@ esp_err_t http_server_OTA_update_handler(httpd_req_t *req)
         if (esp_ota_set_boot_partition(update_partition) == ESP_OK)
         {
             const esp_partition_t *boot_partition = esp_ota_get_boot_partition();
-            ESP_LOGI(TAG, "http_server_OTA_update_handler: Next boot parition subtype %d at ofsset 0x%x", boot_partition->subtype, boot_partition->address);
+            ESP_LOGI(TAG, "http_server_OTA_update_handler: Next boot parition subtype %d at ofsset 0x%lx", boot_partition->subtype, boot_partition->address);
             flash_successful = true;
         }
         else
@@ -253,6 +253,27 @@ esp_err_t http_server_OTA_update_handler(httpd_req_t *req)
     if (flash_successful) {http_server_monitor_send_message(HTTP_MSG_OTA_UPDATE_SUCCESSFUL);} else {http_server_monitor_send_message(HTTP_MSG_OTA_UPDATE_FAILED);}
     return ESP_OK;
 }
+
+/**
+ * OTA status handler responds with the firmware update status after the OTA update is started
+ * and responds with the compiled time/date when the pafe is first requested.
+ * @param req HTTP reqquest for which the uri needs to be handled.
+ * @return ESP_OK
+ */
+esp_err_t http_server_OTA_status_handler(httpd_req_t *req)
+{
+    char otaJSON[100];
+
+    ESP_LOGI(TAG, "OATstatus is requested.");
+
+    sprintf(otaJSON, "{\"ota_update_status\":%d,\"compiled_time\":\"%s\",\"compiled_date\":\"%s\"}", g_fw_update_status, __TIME__, __DATE__ );
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, otaJSON, strlen(otaJSON));
+
+    return ESP_OK;
+}
+
 
 /**
  * Sets up the default httpd server configuration
@@ -348,9 +369,9 @@ static httpd_handle_t http_server_configure(void)
                 .uri = "/OTAupdate",
                 .method = HTTP_POST,
                 .handler = http_server_OTA_update_handler,
-                .user_ctx = NULL;
+                .user_ctx = NULL,
             };
-        httpd_unregister_uri_handler(http_server_handle, &OTA_update);
+        httpd_register_uri_handler(http_server_handle, &OTA_update);
 
         // register OTAstatus handler
         httpd_uri_t OTA_status = 
@@ -358,9 +379,9 @@ static httpd_handle_t http_server_configure(void)
                 .uri = "/OTAstatus",
                 .method = HTTP_POST,
                 .handler = http_server_OTA_status_handler,
-                .user_ctx = NULL;
+                .user_ctx = NULL,
             };
-        httpd_unregister_uri_handler(http_server_handle, &OTA_status);
+        httpd_register_uri_handler(http_server_handle, &OTA_status);
 
         return http_server_handle;
     }
