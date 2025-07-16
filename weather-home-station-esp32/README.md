@@ -57,40 +57,26 @@ In this project, we will build a simple home weather station using the ESP32 mic
 
 ### Function Reference (`rgb_led.c` and `rgb_led.h`)
 
-- **rgb_led_pmw_init(void):**
+- **`rgb_led_pmw_init(void)`:**
   Static. Initializes the LEDC timer and all RGB channels for PWM output. Called automatically by the public status functions if not already initialized.
 
-- **rgb_led_set_color(uint8_t red, uint8_t green, uint8_t blue):**
+- **`rgb_led_set_color(uint8_t red, uint8_t green, uint8_t blue)`:**
   Static. Sets the PWM duty cycle for each color channel, mixing the desired color. Used internally by the status indication functions.
 
-- **rgb_led_wifi_app_started(void):**
+- **`rgb_led_wifi_app_started(void)`:**
   Public. Sets the LED to a color (e.g., purple) to indicate the WiFi application has started.
 
-- **rgb_led_http_server_started(void):**
+- **`rgb_led_http_server_started(void)`:**
   Public. Sets the LED to a color (e.g., orange) to indicate the HTTP server has started.
 
-- **rgb_led_wifi_connected(void):**
+- **`rgb_led_wifi_connected(void)`:**
   Public. Sets the LED to a color (e.g., green) to indicate a successful WiFi connection.
-    * Color to indicate HTTP server has started.
-    */
-    void rgb_led_http_server_started(void);
-
-    /**
-    * Color to indicate that the EPS32 is connected to an access point.
-    */
-    void rgb_led_wifi_connected(void);
 
 2. `rgb_led.c`
 
     - The source file containts all definitions for the functions declared in `rgb_led.h` as well as additional static functions to support configure and initialize the RGB using the ESP32 API.
 
     ```c
-    #include <stdbool.h>
-
-    #include "driver/ledc.h"
-    #include "hal/ledc_types.h"
-    #include "rgb_led.h"
-
     // RGB LED Info array
     ledc_info_t ledc_ch[RGB_LED_CHANNEL_NUM];
 
@@ -239,25 +225,25 @@ The `wifi_app.c` file contains the main logic for initializing, configuring, and
 
 ### Function Reference (`wifi_app.c`)
 
-- **wifi_app_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data):**
+- **`wifi_app_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)`**:
   Handles WiFi and IP events. Logs event types such as AP start/stop, station connect/disconnect, and IP acquisition. Can be extended to trigger additional actions (e.g., LED updates or queue messages) based on event type.
 
-- **wifi_app_event_handler_init():**
+- **`wifi_app_event_handler_init()`:**
   Registers the event handler for both WiFi and IP events using ESP-IDF's event system. Ensures all relevant events are captured and processed by the application.
 
-- **wifi_app_default_wifi_init():**
+- **`wifi_app_default_wifi_init()`:**
   Initializes the TCP/IP stack and configures the default WiFi settings. Creates network interfaces for both station and access point modes, preparing the ESP32 for dual-mode operation.
 
-- **wifi_app_soft_ap_config():**
+- **`wifi_app_soft_ap_config()`:**
   Configures the ESP32 as a WiFi SoftAP (Access Point). Sets up the SSID, password, channel, visibility, authentication mode, and beacon interval. Assigns a static IP, gateway, and netmask, and starts the DHCP server for client devices.
 
-- **wifi_app_task(void *pvParameters):**
+- **`wifi_app_task(void *pvParameters)`:**
   The main FreeRTOS task for the WiFi application. Initializes event handling, network stack, and SoftAP configuration, then starts the WiFi driver. Sends an initial message to start the HTTP server. Enters a loop to process messages from the queue, handling events such as HTTP server start, connection attempts, and successful connections (with corresponding LED updates).
 
-- **wifi_app_send_message(wifi_app_message_e msgID):**
+- **`wifi_app_send_message(wifi_app_message_e msgID)`:**
   Sends a message to the WiFi application's FreeRTOS queue. Used for asynchronous, event-driven communication between different parts of the application (e.g., from event handlers to the main task).
 
-- **wifi_app_start():**
+- **`wifi_app_start()`:**
   Entry point for starting the WiFi application. Sets the initial LED color, disables default WiFi logging, creates the message queue, and starts the main WiFi application task pinned to a specific core.
 
   - Implements a static event handler (`wifi_app_event_handler`) for WiFi and IP events, such as AP start/stop, station connect/disconnect, and IP acquisition.
@@ -290,25 +276,25 @@ This modular approach allows for easy expansion of WiFi-related features and rob
 
 ### Function Reference (`wifi_app.c`)
 
-- **wifi_app_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data):**
+- **`wifi_app_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)`:**
   Handles WiFi and IP events. Logs event types such as AP start/stop, station connect/disconnect, and IP acquisition. Can be extended to trigger additional actions (e.g., LED updates or queue messages) based on event type.
 
-- **wifi_app_event_handler_init():**
+- **`wifi_app_event_handler_init()`:**
   Registers the event handler for both WiFi and IP events using ESP-IDF's event system. Ensures all relevant events are captured and processed by the application.
 
-- **wifi_app_default_wifi_init():**
+- **`wifi_app_default_wifi_init()`:**
   Initializes the TCP/IP stack and configures the default WiFi settings. Creates network interfaces for both station and access point modes, preparing the ESP32 for dual-mode operation.
 
-- **wifi_app_soft_ap_config():**
+- **`wifi_app_soft_ap_config()`:**
   Configures the ESP32 as a WiFi SoftAP (Access Point). Sets up the SSID, password, channel, visibility, authentication mode, and beacon interval. Assigns a static IP, gateway, and netmask, and starts the DHCP server for client devices.
 
-- **wifi_app_task(void *pvParameters):**
+- **`wifi_app_task(void *pvParameters)`:**
   The main FreeRTOS task for the WiFi application. Initializes event handling, network stack, and SoftAP configuration, then starts the WiFi driver. Sends an initial message to start the HTTP server. Enters a loop to process messages from the queue, handling events such as HTTP server start, connection attempts, and successful connections (with corresponding LED updates).
 
-- **wifi_app_send_message(wifi_app_message_e msgID):**
+- **`wifi_app_send_message(wifi_app_message_e msgID)`:**
   Sends a message to the WiFi application's FreeRTOS queue. Used for asynchronous, event-driven communication between different parts of the application (e.g., from event handlers to the main task).
 
-- **wifi_app_start():**
+- **`wifi_app_start()`:**
   Entry point for starting the WiFi application. Sets the initial LED color, disables default WiFi logging, creates the message queue, and starts the main WiFi application task pinned to a specific core.
 
 ### Design Notes
