@@ -215,48 +215,82 @@ These files implement the RGB LED control logic, providing functions to initiali
 
 Refer to the source code in `main/rgb_led.c` and `main/rgb_led.h` for further details and implementation specifics.
 
-During this part, we implement the WiFi SoftAP functionality to allow the ESP32 to create a WiFi access point. The implmentation also included the ability to manage WiFi and other tasks using FreeRTOS. Here are the key files and their contents:
 
 ## `wifi_app.c` - WiFi Application Logic
-
 The `wifi_app.c` file contains the main logic for initializing, configuring, and managing the WiFi application on the ESP32. It handles WiFi and IP events, manages the FreeRTOS task and message queue for WiFi operations, and controls the RGB LED to indicate system status. Below is an overview of its structure and functionality:
 
 ### Key Features
 
-### Function Reference (`wifi_app.c`)
 
 - **`wifi_app_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)`**:
   Handles WiFi and IP events. Logs event types such as AP start/stop, station connect/disconnect, and IP acquisition. Can be extended to trigger additional actions (e.g., LED updates or queue messages) based on event type.
-
 - **`wifi_app_event_handler_init()`:**
   Registers the event handler for both WiFi and IP events using ESP-IDF's event system. Ensures all relevant events are captured and processed by the application.
 
 - **`wifi_app_default_wifi_init()`:**
   Initializes the TCP/IP stack and configures the default WiFi settings. Creates network interfaces for both station and access point modes, preparing the ESP32 for dual-mode operation.
-
 - **`wifi_app_soft_ap_config()`:**
   Configures the ESP32 as a WiFi SoftAP (Access Point). Sets up the SSID, password, channel, visibility, authentication mode, and beacon interval. Assigns a static IP, gateway, and netmask, and starts the DHCP server for client devices.
-
 - **`wifi_app_task(void *pvParameters)`:**
   The main FreeRTOS task for the WiFi application. Initializes event handling, network stack, and SoftAP configuration, then starts the WiFi driver. Sends an initial message to start the HTTP server. Enters a loop to process messages from the queue, handling events such as HTTP server start, connection attempts, and successful connections (with corresponding LED updates).
-
 - **`wifi_app_send_message(wifi_app_message_e msgID)`:**
   Sends a message to the WiFi application's FreeRTOS queue. Used for asynchronous, event-driven communication between different parts of the application (e.g., from event handlers to the main task).
-
 - **`wifi_app_start()`:**
   Entry point for starting the WiFi application. Sets the initial LED color, disables default WiFi logging, creates the message queue, and starts the main WiFi application task pinned to a specific core.
-
   - Implements a static event handler (`wifi_app_event_handler`) for WiFi and IP events, such as AP start/stop, station connect/disconnect, and IP acquisition.
   - Logs each event and can trigger actions (e.g., LED color changes) based on the event type.
-
 - **Initialization Functions:**
   - `wifi_app_event_handler_init()`: Registers the event handler for WiFi and IP events.
-  - `wifi_app_default_wifi_init()`: Initializes the TCP/IP stack and configures the default WiFi settings, including creating network interfaces for both station and access point modes.
   - `wifi_app_soft_ap_config()`: Configures the ESP32 as a WiFi SoftAP, sets static IP, gateway, and netmask, and starts the DHCP server for clients.
 
 - **Task and Queue Management:**
   - Defines a FreeRTOS task (`wifi_app_task`) that initializes the WiFi system, starts the WiFi driver, and processes messages from a queue to handle application-level events.
-  - Uses a message queue (`wifi_app_queue_handle`) to communicate between different parts of the application, allowing asynchronous event handling.
+
+## `http_server.c` and `http_server.h` - HTTP Server Logic
+
+These files implement the HTTP server and its monitor, providing a web interface for the ESP32 weather station. The server serves static files (HTML, CSS, JS, favicon, JQuery) and handles OTA update and WiFi connection events via a message queue.
+
+### Key Features
+
+- **HTTP Server Initialization and Control:**
+  - `http_server_start()`: Starts the HTTP server if not already running.
+  - `http_server_stop()`: Stops the HTTP server and its monitor task.
+  - `http_server_configure()`: Configures the HTTP server, sets up URI handlers, and creates the monitor task and queue.
+
+- **Static File Serving:**
+  - Serves embedded static files for the web interface (index.html, app.css, app.js, JQuery, favicon.ico) using dedicated URI handlers.
+
+- **Monitor Task and Queue:**
+  - `http_server_monitor()`: FreeRTOS task that processes messages from the HTTP server queue, logging events such as WiFi connection attempts and OTA update results.
+  - `http_server_monitor_send_message()`: Sends messages to the HTTP server monitor queue for asynchronous event handling.
+
+### Function Reference (`http_server.c` and `http_server.h`)
+
+- **`http_server_start(void)`:**
+  Starts the HTTP server if not already running.
+
+- **`http_server_stop(void)`:**
+  Stops the HTTP server and its monitor task.
+
+- **`http_server_monitor_send_message(http_server_message_e msgID)`:**
+  Sends a message to the HTTP server monitor queue for event-driven processing.
+
+- **`http_server_monitor(void *pvParameters)`:**
+  Static. FreeRTOS task that processes messages from the HTTP server queue, logging WiFi and OTA events.
+
+- **`http_server_configure(void)`:**
+  Static. Configures the HTTP server, sets up URI handlers for static files, and creates the monitor task and queue.
+
+- **Static URI Handlers:**
+  - `http_server_jquery_handler`, `http_server_index_html_handler`, `http_server_app_css_handler`, `http_server_app_js_handler`, `http_server_favicon_ico_handler`: Serve the respective embedded static files.
+
+### Design Notes
+
+- The HTTP server is tightly integrated with the WiFi application, allowing for real-time status updates and OTA firmware updates via the web interface.
+- The use of a monitor task and message queue enables asynchronous event handling and decouples HTTP server logic from other application components.
+- Static file serving is handled efficiently using embedded binary data and dedicated URI handlers.
+
+Refer to the source code in `main/http_server.c` and `main/http_server.h` for further details and implementation specifics.
 
 - **LED Status Indication:**
   - Calls functions from `rgb_led.c` to set the RGB LED color based on the current WiFi application state (e.g., app started, HTTP server started, WiFi connected).
