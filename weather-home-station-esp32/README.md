@@ -79,7 +79,6 @@ In this project, we will build a simple home weather station using the ESP32 mic
     * Color to indicate that the EPS32 is connected to an access point.
     */
     void rgb_led_wifi_connected(void);
-    ```
 
 2. `rgb_led.c`
 
