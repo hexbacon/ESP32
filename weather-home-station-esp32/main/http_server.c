@@ -5,11 +5,12 @@
  *      Author: christophermena
  */
 
- #include <stdbool.h>
+#include <stdbool.h>
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "sys/param.h"
+#include "esp_timer.h"
 
 #include "http_server.h"
 #include "tasks_common.h"
@@ -30,6 +31,17 @@ static TaskHandle_t task_http_server_monitor = NULL;
 // Queue handle used to manipulate the queue of events
 static QueueHandle_t http_server_monitor_queue_handle = NULL;
 
+/**
+ * ESP32 timer configuration passed to esp_timer_create
+ */
+const esp_timer_create_args_t fw_update_reset_args = {
+    .callback = &http_server_fw_update_reset_callback,
+    .arg = NULL,
+    .dispatch_method = ESP_TIMER_TASK,
+    .name = "fw_update_reset",
+};
+esp_timer_handle_t fw_update_reset;
+
 // Embedded files: JQuery, index.html, app.css, app.js and favicon.ico files
 extern const uint8_t jquery_3_3_1_min_js_start[] asm("_binary_jquery_3_3_1_min_js_start");
 extern const uint8_t jquery_3_3_1_min_js_end[] asm("_binary_jquery_3_3_1_min_js_end");
@@ -41,6 +53,26 @@ extern const uint8_t app_js_start[] asm("_binary_app_js_start");
 extern const uint8_t app_js_end[] asm("_binary_app_js_end");
 extern const uint8_t favicon_ico_start[] asm("_binary_favicon_ico_start");
 extern const uint8_t favicon_ico_end[] asm("_binary_favicon_ico_end");
+
+/**
+ * Checks the g_fw_update_status and creates the fw_update_reset timer if g_fw_update_status is true.
+ */
+void http_server_fw_reset_timer(void)
+{
+    if (g_fw_update_status == OTA_UPDATE_SUCCESSFUL)
+    {
+        ESP_LOGI(TAG, "http_server_fw_reset_timer: FW update successful, starting FW update reset timer");
+
+        // Gice the web page a chance to receice an ackwoledge back and initialize the timer
+        ESP_ERROR_CHECK(esp_timer_create(&fw_update_reset_args, &fw_update_reset));
+        ESP_ERROR_CHECK(esp_timer_start_once(fw_update_reset, 8000000));
+    }
+    else
+    {
+        ESP_LOGI(TAG, "http_server_fw_reset_timer: FW update unsuccessful");
+
+    }
+}
 
 /**
  * HTTP seerver monitor task used to track events of the HTTP server.
@@ -74,6 +106,7 @@ static void http_server_monitor(void *pvParameters)
             case HTTP_MSG_OTA_UPDATE_SUCCESSFUL:
                 ESP_LOGI(TAG, "HTTP_MSG_OTA_UPDATE_SUCCESSFUL");
                 g_fw_update_status = OTA_UPDATE_SUCCESSFUL;
+                http_server_fw_reset_timer();
                 break;
 
             case HTTP_MSG_OTA_UPDATE_FAILED:
@@ -220,7 +253,7 @@ esp_err_t http_server_OTA_update_handler(httpd_req_t *req)
 
             // Wrtie the first part of the data
             esp_ota_write(ota_handle, body_start_p, body_part_len);
-
+            content_received += body_part_len;
         }
         else
         {
@@ -417,4 +450,10 @@ BaseType_t http_server_monitor_send_message(http_server_message_e msgID)
     http_server_queue_message_t msg;
     msg.msgID = msgID;
     return xQueueSend(http_server_monitor_queue_handle, &msg, portMAX_DELAY);
+}
+
+void http_server_fw_update_reset_callback(void* args)
+{
+    ESP_LOGI(TAG, "http_server_fw_update_reset_callback: Timer timedout, restarting the device");
+    esp_restart();
 }
