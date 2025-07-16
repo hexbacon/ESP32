@@ -36,156 +36,108 @@ In this project, we will build a simple home weather station using the ESP32 mic
 
    ```c
    // RGB LED configuration
-   typedef struct 
-   {
-    int channel;
-    int gpio;
-    int mode;
-    int timer_index;
-   } ledc_info_t;
-   ```
 
-   - This header contains prototypes for the functions to initialize the RGB LED and set its color.
+## Part 3: HTTP Server
 
-   ```c
-    /**
-    * Color to indicate WiFi application has started.
-    */
-    void rgb_led_wifi_app_started(void);
+This section implements the HTTP server functionality for the ESP32 weather station. The server provides a web interface for monitoring the station's data and managing firmware updates over the air (OTA). The implementation uses FreeRTOS tasks for server monitoring and event handling.
 
-    /**
+### Task Configuration
 
-### Function Reference (`rgb_led.c` and `rgb_led.h`)
+The HTTP server uses the following FreeRTOS task configurations (defined in `tasks_common.h`):
 
-- **`rgb_led_pmw_init(void)`:**
-  Static. Initializes the LEDC timer and all RGB channels for PWM output. Called automatically by the public status functions if not already initialized.
+```c
+// HTTP Server task
+#define HTTP_SERVER_TASK_STACK_SIZE         8192
+#define HTTP_SERVER_TASK_PRIORITY           4
+#define HTTP_SERVER_TASK_CORE_ID            0
 
-- **`rgb_led_set_color(uint8_t red, uint8_t green, uint8_t blue)`:**
-  Static. Sets the PWM duty cycle for each color channel, mixing the desired color. Used internally by the status indication functions.
+// HTTP Server Monitor task
+#define HTTP_SERVER_MONITOR_STACK_SIZE      4096
+#define HTTP_SERVER_MONITOR_PRIORITY        3
+#define HTTP_SERVER_MONITOR_CORE_ID         0
+```
 
-- **`rgb_led_wifi_app_started(void)`:**
-  Public. Sets the LED to a color (e.g., purple) to indicate the WiFi application has started.
+### `http_server.c` and `http_server.h` - HTTP Server Logic
 
-- **`rgb_led_http_server_started(void)`:**
-  Public. Sets the LED to a color (e.g., orange) to indicate the HTTP server has started.
+These files implement the HTTP server and its monitor, providing a web interface for the ESP32 weather station. The server serves static files (HTML, CSS, JS, favicon, JQuery) and handles OTA update and WiFi connection events via a message queue.
 
-- **`rgb_led_wifi_connected(void)`:**
-  Public. Sets the LED to a color (e.g., green) to indicate a successful WiFi connection.
+#### Key Features
 
-2. `rgb_led.c`
+- **HTTP Server Initialization and Control:**
+  - `http_server_start()`: Starts the HTTP server if not already running.
+  - `http_server_stop()`: Stops the HTTP server and its monitor task.
+  - `http_server_configure()`: Configures the HTTP server, sets up URI handlers, and creates the monitor task and queue.
 
-    - The source file containts all definitions for the functions declared in `rgb_led.h` as well as additional static functions to support configure and initialize the RGB using the ESP32 API.
+- **Static File Serving:**
+  - Serves embedded static files for the web interface (index.html, app.css, app.js, JQuery, favicon.ico) using dedicated URI handlers.
 
-    ```c
-    // RGB LED Info array
-    ledc_info_t ledc_ch[RGB_LED_CHANNEL_NUM];
+- **Monitor Task and Queue:**
+  - `http_server_monitor()`: FreeRTOS task that processes messages from the HTTP server queue, logging events such as WiFi connection attempts and OTA update results.
+  - `http_server_monitor_send_message()`: Sends messages to the HTTP server monitor queue for asynchronous event handling.
 
-    // Handle for RGB LED PMW Init
-    bool g_pmw_init_handle = false;
+#### Function Reference (`http_server.c` and `http_server.h`)
 
-    /**
-     * Initializes the RGB LED settings per channel, including
-     * the GPIO for each color, mode and timer configuration
-     */
-    static void rgb_led_pmw_init(void) 
-    {
-        int rgb_ch;
+- **`http_server_start(void)`:**
+  Starts the HTTP server if not already running.
 
-        // Red
-        ledc_ch[0].channel          = LEDC_CHANNEL_0;
-        ledc_ch[0].gpio             = RGB_LED_RED_GPIO;
-        ledc_ch[0].mode             = LEDC_HIGH_SPEED_MODE;
-        ledc_ch[0].timer_index     = LEDC_TIMER_0;
+- **`http_server_stop(void)`:**
+  Stops the HTTP server and its monitor task.
 
-        // Green
-        ledc_ch[1].channel          = LEDC_CHANNEL_1;
-        ledc_ch[1].gpio             = RGB_LED_GREEN_GPIO;
-        ledc_ch[1].mode             = LEDC_HIGH_SPEED_MODE;
-        ledc_ch[1].timer_index     = LEDC_TIMER_0;
+- **`http_server_monitor_send_message(http_server_message_e msgID)`:**
+  Sends a message to the HTTP server monitor queue for event-driven processing.
 
-        // Blue
-        ledc_ch[2].channel          = LEDC_CHANNEL_2;
-        ledc_ch[2].gpio             = RGB_LED_GREEN_GPIO;
-        ledc_ch[2].mode             = LEDC_HIGH_SPEED_MODE;
-        ledc_ch[2].timer_index     = LEDC_TIMER_0;
+- **`http_server_monitor(void *pvParameters)`:**
+  Static. FreeRTOS task that processes messages from the HTTP server queue, logging WiFi and OTA events.
 
-        // Configure timer 0
-        ledc_timer_config_t ledc_timer =
-        {
-            .duty_resolution        = LEDC_TIMER_8_BIT,
-            .freq_hz                = 100,
-            .speed_mode             = LEDC_HIGH_SPEED_MODE,
-            .timer_num              = LEDC_TIMER_0
-        };
-        ledc_timer_config(&ledc_timer);
+- **`http_server_configure(void)`:**
+  Static. Configures the HTTP server, sets up URI handlers for static files, and creates the monitor task and queue.
 
-        // Configure channels
-        for (rgb_ch = 0; rgb_ch < RGB_LED_CHANNEL_NUM; rgb_ch++)
-        {
-            ledc_channel_config_t ledc_channel =
-            {
-                .channel            = ledc_ch[rgb_ch].channel,
-                .duty               = 0,
-                .hpoint             = 0,
-                .gpio_num           = ledc_ch[rgb_ch].gpio,
-                .intr_type          = LEDC_INTR_DISABLE,
-                .speed_mode         = ledc_ch[rgb_ch].mode,
-            };
-            ledc_channel_config(&ledc_channel);
-        }
-        g_pmw_init_handle = true;
-    }
+- **Static URI Handlers:**
+  - `http_server_jquery_handler`, `http_server_index_html_handler`, `http_server_app_css_handler`, `http_server_app_js_handler`, `http_server_favicon_ico_handler`: Serve the respective embedded static files.
 
+### Message Queue Structure
 
-    /**
-     * Sets the RGB color.
-     */
-    static void rgb_led_set_color(uint8_t red, uint8_t green, uint8_t blue)
-    {
-        // Value should be 0-255 for an 8-bit number
-        ledc_set_duty(ledc_ch[0].mode, ledc_ch[0].channel, red);
-        ledc_update_duty(ledc_ch[0].mode, ledc_ch[0].channel);
+The HTTP server uses a message queue for event handling, defined in `http_server.h`:
 
-        ledc_set_duty(ledc_ch[1].mode, ledc_ch[1].channel, green);
-        ledc_update_duty(ledc_ch[1].mode, ledc_ch[1].channel);
+```c
+/**
+ * Messages for the HTTP monitor.
+ */
+typedef enum http_server_message
+{
+    HTTP_MSG_WIFI_CONNECT_INIT = 0,
+    HTTP_MSG_WIFI_CONNECT_SUCCESS,
+    HTTP_MSG_WIFI_CONNECT_FAIL,
+    HTTP_MSG_OTA_UPDATE_SUCCESSFUL,
+    HTTP_MSG_OTA_UPDATE_FAILED,
+    HTTP_MSG_OTA_UPDATE_INITIALIZED,
+} http_server_message_e;
 
-        ledc_set_duty(ledc_ch[2].mode, ledc_ch[2].channel, blue);
-        ledc_update_duty(ledc_ch[2].mode, ledc_ch[2].channel);
-    }
+/**
+ * Structure for the message queue.
+*/
+typedef struct http_server_queue_message
+{
+    http_server_message_e msgID;
+} http_server_queue_message_t;
+```
 
+### Integration with WiFi Application
 
-    void rgb_led_wifi_app_started(void)
-    {
-        if (g_pmw_init_handle == false)
-        {
-            rgb_led_pmw_init();
-        }
-        
-        rgb_led_set_color(255, 102, 255);
-    }
+The HTTP server is started by the WiFi application when it receives the `WIFI_APP_MSG_START_HTTP_SERVER` message. This integration ensures that the server only starts after the WiFi setup is complete. The status of both the WiFi connection and HTTP server is indicated through the RGB LED:
 
+- Purple: WiFi application started
+- Orange: HTTP server started
+- Green: WiFi connected
 
-    void rgb_led_http_server_started(void)
-    {
-        if (g_pmw_init_handle == false)
-        {
-            rgb_led_pmw_init();
-        }
-        
-        rgb_led_set_color(204 , 102, 51);
-    }
+### Design Notes
 
+- The HTTP server is tightly integrated with the WiFi application, allowing for real-time status updates and OTA firmware updates via the web interface.
+- The use of a monitor task and message queue enables asynchronous event handling and decouples HTTP server logic from other application components.
+- Static file serving is handled efficiently using embedded binary data and dedicated URI handlers.
 
-    void rgb_led_wifi_connected(void)
-    {
-        if (g_pmw_init_handle == false)
-        {
-            rgb_led_pmw_init();
-        }
-        
-        rgb_led_set_color(0, 255, 153);
-    }
-    ```
+Refer to the source code in `main/http_server.c` and `main/http_server.h` for further details and implementation specifics.
+
 
 ## Part 2: WiFi - SoftAp
 
@@ -416,9 +368,9 @@ Refer to the source code in `main/wifi_app.c` for further details and implementa
     {
         wifi_app_message_e msgID;
     } wifi_app_queue_message_t;
-    ``` 
+    ```
 
 
 
 
-   
+
