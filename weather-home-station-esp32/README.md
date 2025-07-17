@@ -136,6 +136,46 @@ The HTTP server is started by the WiFi application when it receives the `WIFI_AP
 - The use of a monitor task and message queue enables asynchronous event handling and decouples HTTP server logic from other application components.
 - Static file serving is handled efficiently using embedded binary data and dedicated URI handlers.
 
+### OTA (Over-The-Air) Update Feature
+
+The HTTP server includes robust OTA update functionality that allows firmware updates through the web interface.
+
+#### Key OTA Components
+
+- **Update Status Tracking:**
+  - `g_fw_update_status`: Global variable tracking the firmware update status (pending, successful, or failed)
+  - Status codes: `OTA_UPDATE_PENDING (0)`, `OTA_UPDATE_SUCCESSFUL (1)`, `OTA_UPDATE_FAILED (-1)`
+
+- **OTA Handlers:**
+  - `http_server_OTA_update_handler`: Receives and processes the .bin file upload for firmware updates
+  - `http_server_OTA_status_handler`: Provides firmware update status and compilation information
+
+- **Reset Timer:**
+  - Automatically restarts the ESP32 after a successful update
+  - Configured through `fw_update_reset_args` with the `http_server_fw_update_reset_callback`
+
+#### OTA Update Process
+
+1. **File Upload:**
+   - Binary firmware file (.bin) is uploaded through the web interface
+   - Server receives and processes the file in chunks
+   - OTA handle manages the update partition writing
+
+2. **Validation and Installation:**
+   - Validates received firmware data
+   - Writes to the next available OTA partition
+   - Updates status through the monitor queue
+
+3. **Status Reporting:**
+   - Real-time status updates via `http_server_OTA_status_handler`
+   - Provides compilation time/date information
+   - Returns JSON-formatted status response
+
+4. **Post-Update Actions:**
+   - Automatic ESP32 restart on successful update
+   - Error handling for failed updates
+   - Status LED indicators for update progress
+
 Refer to the source code in `main/http_server.c` and `main/http_server.h` for further details and implementation specifics.
 
 

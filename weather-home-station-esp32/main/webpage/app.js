@@ -78,9 +78,7 @@ function getUpdateStatus()
 
     if (xhr.readyState == 4 && xhr.status == 200) 
 	{		
-        var response = JSON.parse(xhr.responseText);
-						
-	 	document.getElementById("latest_firmware").innerHTML = response.compile_date + " - " + response.compile_time
+        var response = JSON.parse(xhr.responseText);        document.getElementById("latest_firmware").innerHTML = response.compiled_date + " - " + response.compiled_time
 
 		// If flashing was complete it will return a 1, else -1
 		// A return of 0 is just for information on the Latest Firmware request
