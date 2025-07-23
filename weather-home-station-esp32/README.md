@@ -20,7 +20,7 @@ In this project, we will build a simple home weather station using the ESP32 mic
 
 1. `rgb_led.h`
 
-   - This header containds the definitions for the RGB LED GPIO pins and the channel number.
+   - This header contains the definitions for the RGB LED GPIO pins and the channel number.
 
    ```c
    // RGB LED GPIOs
@@ -32,151 +32,64 @@ In this project, we will build a simple home weather station using the ESP32 mic
     #define RGB_LED_CHANNEL_NUM 3
    ```
 
-   - This header also contains the structure definition for the RGB LED configuration.
+   - This header also contains the structure definition for the RGB LED configuration and blink parameters.
 
    ```c
+   // BLINK parameters
+   #define RED_BLINK_ON_DUTY   255
+   #define RED_BLINK_OFF_DUTY  0
+   #define RED_BLINK_DELAY_MS  1000
+
    // RGB LED configuration
+   typedef struct {
+       int channel;
+       int gpio;
+       int mode;
+       int timer_index;
+   } ledc_info_t;
+   ```
 
-## Part 3: HTTP Server
+#### Function Reference (`rgb_led.c` and `rgb_led.h`)
 
-This section implements the HTTP server functionality for the ESP32 weather station. The server provides a web interface for monitoring the station's data and managing firmware updates over the air (OTA). The implementation uses FreeRTOS tasks for server monitoring and event handling.
+- **`rgb_led_wifi_app_started(void)`:**
+  Sets LED to magenta/purple (255, 102, 255) to indicate WiFi application has started.
 
-### Task Configuration
+- **`rgb_led_http_server_started(void)`:**
+  Sets LED to orange (204, 102, 51) to indicate HTTP server has started.
 
-The HTTP server uses the following FreeRTOS task configurations (defined in `tasks_common.h`):
+- **`rgb_led_wifi_connected(void)`:**
+  Sets LED to green (0, 255, 153) to indicate successful WiFi connection.
 
-```c
-// HTTP Server task
-#define HTTP_SERVER_TASK_STACK_SIZE         8192
-#define HTTP_SERVER_TASK_PRIORITY           4
-#define HTTP_SERVER_TASK_CORE_ID            0
+- **`rgb_led_dht11_started(void)`:**
+  Sets LED to teal (32, 66, 63) to indicate DHT11 sensor initialization.
 
-// HTTP Server Monitor task
-#define HTTP_SERVER_MONITOR_STACK_SIZE      4096
-#define HTTP_SERVER_MONITOR_PRIORITY        3
-#define HTTP_SERVER_MONITOR_CORE_ID         0
-```
+- **`rgb_led_error(void)`:**
+  Creates a blinking red LED task to indicate system errors. Uses FreeRTOS task with DHT sensor task parameters.
 
-### `http_server.c` and `http_server.h` - HTTP Server Logic
+- **`rgb_led_dht11_read(void)`:**
+  Sets LED to light blue (147, 251, 255) to indicate DHT11 sensor reading operation.
 
-These files implement the HTTP server and its monitor, providing a web interface for the ESP32 weather station. The server serves static files (HTML, CSS, JS, favicon, JQuery) and handles OTA update and WiFi connection events via a message queue.
+#### Static Helper Functions
 
-#### Key Features
+- **`rgb_led_pmw_init(void)`:**
+  Initializes the LEDC (LED Controller) peripheral for PWM-based color mixing. Configures timer and channels for RGB control.
 
-- **HTTP Server Initialization and Control:**
-  - `http_server_start()`: Starts the HTTP server if not already running.
-  - `http_server_stop()`: Stops the HTTP server and its monitor task.
-  - `http_server_configure()`: Configures the HTTP server, sets up URI handlers, and creates the monitor task and queue.
+- **`rgb_led_set_color(uint8_t red, uint8_t green, uint8_t blue)`:**
+  Sets the RGB LED color using 8-bit values (0-255) for each color channel.
 
-- **Static File Serving:**
-  - Serves embedded static files for the web interface (index.html, app.css, app.js, JQuery, favicon.ico) using dedicated URI handlers.
+- **`red_led_task(void *pvParameters)`:**
+  FreeRTOS task that creates a blinking red LED pattern for error indication. Toggles red LED on/off with configurable delay.
 
-- **Monitor Task and Queue:**
-  - `http_server_monitor()`: FreeRTOS task that processes messages from the HTTP server queue, logging events such as WiFi connection attempts and OTA update results.
-  - `http_server_monitor_send_message()`: Sends messages to the HTTP server monitor queue for asynchronous event handling.
+### LED Status Indicators
 
-#### Function Reference (`http_server.c` and `http_server.h`)
+The RGB LED provides visual feedback for different system states:
 
-- **`http_server_start(void)`:**
-  Starts the HTTP server if not already running.
-
-- **`http_server_stop(void)`:**
-  Stops the HTTP server and its monitor task.
-
-- **`http_server_monitor_send_message(http_server_message_e msgID)`:**
-  Sends a message to the HTTP server monitor queue for event-driven processing.
-
-- **`http_server_monitor(void *pvParameters)`:**
-  Static. FreeRTOS task that processes messages from the HTTP server queue, logging WiFi and OTA events.
-
-- **`http_server_configure(void)`:**
-  Static. Configures the HTTP server, sets up URI handlers for static files, and creates the monitor task and queue.
-
-- **Static URI Handlers:**
-  - `http_server_jquery_handler`, `http_server_index_html_handler`, `http_server_app_css_handler`, `http_server_app_js_handler`, `http_server_favicon_ico_handler`: Serve the respective embedded static files.
-
-### Message Queue Structure
-
-The HTTP server uses a message queue for event handling, defined in `http_server.h`:
-
-```c
-/**
- * Messages for the HTTP monitor.
- */
-typedef enum http_server_message
-{
-    HTTP_MSG_WIFI_CONNECT_INIT = 0,
-    HTTP_MSG_WIFI_CONNECT_SUCCESS,
-    HTTP_MSG_WIFI_CONNECT_FAIL,
-    HTTP_MSG_OTA_UPDATE_SUCCESSFUL,
-    HTTP_MSG_OTA_UPDATE_FAILED,
-    HTTP_MSG_OTA_UPDATE_INITIALIZED,
-} http_server_message_e;
-
-/**
- * Structure for the message queue.
-*/
-typedef struct http_server_queue_message
-{
-    http_server_message_e msgID;
-} http_server_queue_message_t;
-```
-
-### Integration with WiFi Application
-
-The HTTP server is started by the WiFi application when it receives the `WIFI_APP_MSG_START_HTTP_SERVER` message. This integration ensures that the server only starts after the WiFi setup is complete. The status of both the WiFi connection and HTTP server is indicated through the RGB LED:
-
-- Purple: WiFi application started
-- Orange: HTTP server started
-- Green: WiFi connected
-
-### Design Notes
-
-- The HTTP server is tightly integrated with the WiFi application, allowing for real-time status updates and OTA firmware updates via the web interface.
-- The use of a monitor task and message queue enables asynchronous event handling and decouples HTTP server logic from other application components.
-- Static file serving is handled efficiently using embedded binary data and dedicated URI handlers.
-
-### OTA (Over-The-Air) Update Feature
-
-The HTTP server includes robust OTA update functionality that allows firmware updates through the web interface.
-
-#### Key OTA Components
-
-- **Update Status Tracking:**
-  - `g_fw_update_status`: Global variable tracking the firmware update status (pending, successful, or failed)
-  - Status codes: `OTA_UPDATE_PENDING (0)`, `OTA_UPDATE_SUCCESSFUL (1)`, `OTA_UPDATE_FAILED (-1)`
-
-- **OTA Handlers:**
-  - `http_server_OTA_update_handler`: Receives and processes the .bin file upload for firmware updates
-  - `http_server_OTA_status_handler`: Provides firmware update status and compilation information
-
-- **Reset Timer:**
-  - Automatically restarts the ESP32 after a successful update
-  - Configured through `fw_update_reset_args` with the `http_server_fw_update_reset_callback`
-
-#### OTA Update Process
-
-1. **File Upload:**
-   - Binary firmware file (.bin) is uploaded through the web interface
-   - Server receives and processes the file in chunks
-   - OTA handle manages the update partition writing
-
-2. **Validation and Installation:**
-   - Validates received firmware data
-   - Writes to the next available OTA partition
-   - Updates status through the monitor queue
-
-3. **Status Reporting:**
-   - Real-time status updates via `http_server_OTA_status_handler`
-   - Provides compilation time/date information
-   - Returns JSON-formatted status response
-
-4. **Post-Update Actions:**
-   - Automatic ESP32 restart on successful update
-   - Error handling for failed updates
-   - Status LED indicators for update progress
-
-Refer to the source code in `main/http_server.c` and `main/http_server.h` for further details and implementation specifics.
+- **Magenta/Purple**: WiFi application started
+- **Orange**: HTTP server started  
+- **Green**: WiFi connected successfully
+- **Teal**: DHT11 sensor initialized
+- **Blinking Red**: System error detected
+- **Light Blue**: DHT11 sensor reading in progress
 
 
 ## Part 2: WiFi - SoftAp
@@ -242,21 +155,28 @@ The `wifi_app.c` file contains the main logic for initializing, configuring, and
 
 These files implement the HTTP server and its monitor, providing a web interface for the ESP32 weather station. The server serves static files (HTML, CSS, JS, favicon, JQuery) and handles OTA update and WiFi connection events via a message queue.
 
-### Key Features
+### Task Configuration
 
-- **HTTP Server Initialization and Control:**
-  - `http_server_start()`: Starts the HTTP server if not already running.
-  - `http_server_stop()`: Stops the HTTP server and its monitor task.
-  - `http_server_configure()`: Configures the HTTP server, sets up URI handlers, and creates the monitor task and queue.
+The HTTP server uses the following FreeRTOS task configurations (defined in `tasks_common.h`):
 
-- **Static File Serving:**
-  - Serves embedded static files for the web interface (index.html, app.css, app.js, JQuery, favicon.ico) using dedicated URI handlers.
+```c
+// HTTP Server task
+#define HTTP_SERVER_TASK_STACK_SIZE         8192
+#define HTTP_SERVER_TASK_PRIORITY           4
+#define HTTP_SERVER_TASK_CORE_ID            0
 
-- **Monitor Task and Queue:**
-  - `http_server_monitor()`: FreeRTOS task that processes messages from the HTTP server queue, logging events such as WiFi connection attempts and OTA update results.
-  - `http_server_monitor_send_message()`: Sends messages to the HTTP server monitor queue for asynchronous event handling.
+// HTTP Server Monitor task
+#define HTTP_SERVER_MONITOR_STACK_SIZE      4096
+#define HTTP_SERVER_MONITOR_PRIORITY        3
+#define HTTP_SERVER_MONITOR_CORE_ID         0
 
-### Function Reference (`http_server.c` and `http_server.h`)
+// DHT11 Sensor task
+#define DHT_SENSOR_TASK_STACK_SIZE          4096
+#define DHT_SENSOR_TASK_PRIORITY            2
+#define DHT_SENSOR_TASK__CORE_ID            0
+```
+
+#### Function Reference (`http_server.c` and `http_server.h`)
 
 - **`http_server_start(void)`:**
   Starts the HTTP server if not already running.
@@ -273,142 +193,217 @@ These files implement the HTTP server and its monitor, providing a web interface
 - **`http_server_configure(void)`:**
   Static. Configures the HTTP server, sets up URI handlers for static files, and creates the monitor task and queue.
 
-- **Static URI Handlers:**
-  - `http_server_jquery_handler`, `http_server_index_html_handler`, `http_server_app_css_handler`, `http_server_app_js_handler`, `http_server_favicon_ico_handler`: Serve the respective embedded static files.
+- **`http_server_fw_reset_timer(void)`:**
+  Checks firmware update status and creates reset timer for successful updates.
+
+- **`http_server_fw_update_reset_callback(void* args)`:**
+  Timer callback function that restarts the ESP32 after successful firmware update.
+
+#### OTA Update Handlers
+
+- **`http_server_OTA_update_handler(httpd_req_t *req)`:**
+  Handles firmware binary (.bin) file uploads. Processes multipart form data, writes to OTA partition, and validates the update.
+
+- **`http_server_OTA_status_handler(httpd_req_t *req)`:**
+  Returns JSON response with current OTA update status and firmware compilation information.
+
+#### Static File Handlers
+
+- **`http_server_jquery_handler(httpd_req_t *req)`:**
+  Serves embedded jQuery library file.
+
+- **`http_server_index_html_handler(httpd_req_t *req)`:**
+  Serves the main web interface HTML file.
+
+- **`http_server_app_css_handler(httpd_req_t *req)`:**
+  Serves the application CSS stylesheet.
+
+- **`http_server_app_js_handler(httpd_req_t *req)`:**
+  Serves the application JavaScript file.
+
+- **`http_server_favicon_ico_handler(httpd_req_t *req)`:**
+  Serves the website favicon icon.
+
+### Integration with Main Application
+
+The DHT11 sensor is integrated into the main application loop with:
+
+- **60-second reading interval**: Prevents over-polling the sensor using `xDelay` variable
+- **RGB LED status indication**: 
+  - Shows sensor errors with blinking red LED via `rgb_led_error()`
+  - Indicates successful readings with appropriate color changes
+- **Automatic retry**: Continues operation even after read failures
+- **Logging**: Provides detailed information about sensor readings and errors using ESP_LOGI
+
+### Main Application Integration
+
+The `main.c` file demonstrates the integration of all components:
+
+```c
+void app_main(void)
+{
+    // Initialize NVS for WiFi credentials storage
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    // Start WiFi application (includes HTTP server startup)
+    wifi_app_start();
+
+    // Initialize and monitor DHT11 sensor
+    dht11_t sensor;
+    dht11_init(&sensor, 4);
+    const TickType_t xDelay = 60000 / portTICK_PERIOD_MS;  // 60-second intervals
+    vTaskDelay(pdMS_TO_TICKS(2000));  // Initial delay
+
+    while (1) 
+    {
+        if (dht11_read(&sensor) == ESP_OK) 
+        {
+            ESP_LOGI("DHT11", "Temperature: %d°C, Humidity: %d%%",
+                     dht11_get_temperature(&sensor),
+                     dht11_get_humidity(&sensor));
+        } else 
+        {
+            ESP_LOGI("DHT11", "Failed to read from sensor");
+            rgb_led_error();  // Activate error LED indication
+        }
+        vTaskDelay(xDelay);  // Wait 60 seconds between readings
+    }
+}
+```
 
 ### Design Notes
 
-- The HTTP server is tightly integrated with the WiFi application, allowing for real-time status updates and OTA firmware updates via the web interface.
-- The use of a monitor task and message queue enables asynchronous event handling and decouples HTTP server logic from other application components.
-- Static file serving is handled efficiently using embedded binary data and dedicated URI handlers.
+- The application uses a modular approach with separate tasks for WiFi, HTTP server, and sensor monitoring
+- Visual feedback through RGB LED helps with debugging and status monitoring
+- The 60-second sensor reading interval prevents DHT11 overheating and ensures reliable operation
+- Error handling includes both logging and visual indication for robust operation
+- All components are integrated through FreeRTOS tasks and queues for responsive, event-driven operation
 
-Refer to the source code in `main/http_server.c` and `main/http_server.h` for further details and implementation specifics.
 
-- **LED Status Indication:**
-  - Calls functions from `rgb_led.c` to set the RGB LED color based on the current WiFi application state (e.g., app started, HTTP server started, WiFi connected).
+## Part 4: DHT11 Temperature and Humidity Sensor
 
-- **Public API:**
-  - `wifi_app_send_message()`: Sends messages to the WiFi application queue for event-driven processing.
-  - `wifi_app_start()`: Initializes the application, sets up the LED, disables default WiFi logging, creates the message queue, and starts the main WiFi application task.
+The DHT11 sensor provides digital temperature and humidity readings through a single-wire communication protocol. The implementation includes proper timing control, error handling, and integration with the RGB LED status system.
 
-### Example Flow
+### Hardware Configuration
 
-1. **Startup:** `wifi_app_start()` is called, which sets the initial LED color, disables verbose WiFi logs, creates the message queue, and starts the main task.
-2. **Task Execution:** The main task (`wifi_app_task`) initializes the event handler, network stack, and SoftAP configuration, then starts the WiFi driver.
-3. **Event Handling:** As WiFi and IP events occur, the registered event handler logs them and can trigger further actions (e.g., sending messages to the queue).
-4. **Queue Processing:** The main task waits for messages (such as starting the HTTP server or indicating a successful connection) and updates the LED or performs other actions accordingly.
+- **GPIO Pin**: GPIO 4 (configurable via `DHT11_GPIO_SENSOR_PIN`)
+- **Power**: 3.3V or 5V
+- **Pull-up Resistor**: 4.7kΩ or 10kΩ between DATA and VCC (recommended)
+- **Communication**: Single-wire digital protocol
 
-This modular approach allows for easy expansion of WiFi-related features and robust event-driven management of the ESP32's networking capabilities.
+### Key Features
 
-### Function Reference (`wifi_app.c`)
+- Single-wire communication protocol implementation
+- Precise timing control using ESP32's high-resolution timer
+- Automatic retry mechanism with configurable attempts
+- Integration with RGB LED for visual status indication
+- Checksum validation for data integrity
+- Non-blocking operation with FreeRTOS task delays
 
-- **`wifi_app_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)`:**
-  Handles WiFi and IP events. Logs event types such as AP start/stop, station connect/disconnect, and IP acquisition. Can be extended to trigger additional actions (e.g., LED updates or queue messages) based on event type.
+### DHT11 Communication Protocol
 
-- **`wifi_app_event_handler_init()`:**
-  Registers the event handler for both WiFi and IP events using ESP-IDF's event system. Ensures all relevant events are captured and processed by the application.
+The DHT11 uses a custom single-wire protocol:
 
-- **`wifi_app_default_wifi_init()`:**
-  Initializes the TCP/IP stack and configures the default WiFi settings. Creates network interfaces for both station and access point modes, preparing the ESP32 for dual-mode operation.
+1. **Start Signal**: MCU pulls line LOW for 20ms, then HIGH for 30μs
+2. **Response Signal**: DHT11 pulls line LOW for 80μs, then HIGH for 80μs
+3. **Data Transmission**: 40 bits (5 bytes) of data
+   - Byte 0: Humidity integer part
+   - Byte 1: Humidity decimal part (always 0 for DHT11)
+   - Byte 2: Temperature integer part
+   - Byte 3: Temperature decimal part (always 0 for DHT11)
+   - Byte 4: Checksum (sum of bytes 0-3)
 
-- **`wifi_app_soft_ap_config()`:**
-  Configures the ESP32 as a WiFi SoftAP (Access Point). Sets up the SSID, password, channel, visibility, authentication mode, and beacon interval. Assigns a static IP, gateway, and netmask, and starts the DHCP server for client devices.
+#### Function Reference (`DHT11.c` and `DHT11.h`)
 
-- **`wifi_app_task(void *pvParameters)`:**
-  The main FreeRTOS task for the WiFi application. Initializes event handling, network stack, and SoftAP configuration, then starts the WiFi driver. Sends an initial message to start the HTTP server. Enters a loop to process messages from the queue, handling events such as HTTP server start, connection attempts, and successful connections (with corresponding LED updates).
+- **`dht11_init(dht11_t *sensor, int gpio_num)`:**
+  Initializes the DHT11 sensor with the specified GPIO pin. Configures the pin for input/output operation with pull-up enabled and sets initial state.
 
-- **`wifi_app_send_message(wifi_app_message_e msgID)`:**
-  Sends a message to the WiFi application's FreeRTOS queue. Used for asynchronous, event-driven communication between different parts of the application (e.g., from event handlers to the main task).
+- **`dht11_read(dht11_t *sensor)`:**
+  Performs a complete sensor reading cycle. Sends start signal, waits for sensor response, reads 40 data bits, validates checksum, and stores temperature/humidity values. Returns `ESP_OK` on success or error code on failure.
 
-- **`wifi_app_start()`:**
-  Entry point for starting the WiFi application. Sets the initial LED color, disables default WiFi logging, creates the message queue, and starts the main WiFi application task pinned to a specific core.
+- **`dht11_get_temperature(dht11_t *sensor)`:**
+  Returns the last successfully read temperature value in Celsius from the sensor structure.
+
+- **`dht11_get_humidity(dht11_t *sensor)`:**
+  Returns the last successfully read humidity value as a percentage from the sensor structure.
+
+- **`dht11_celsius_to_fahrenheit(int celsius)`:**
+  Utility function to convert Celsius temperature to Fahrenheit using the formula: F = (C * 9/5) + 32.
+
+- **`dht11_get_sersor_temperature(void)`:**
+  Global function that returns the last valid temperature reading without requiring a sensor structure reference. Returns -1 if no valid reading is available.
+
+- **`dht11_get_sensor_humidity(void)`:**
+  Global function that returns the last valid humidity reading without requiring a sensor structure reference. Returns -1 if no valid reading is available.
+
+#### Static Helper Functions
+
+- **`dht11_wait_for_level(int level, int timeout_us)`:**
+  Waits for the GPIO pin to reach the specified level (0 or 1) within the given timeout period. Used during the communication protocol for synchronization.
+
+- **`dht11_set_output(dht11_t *sensor)` / `dht11_set_input(dht11_t *sensor)`:**
+  Configure the GPIO pin direction for output or input operation during different phases of communication.
+
+### Data Structure
+
+```c
+typedef struct dht11 {
+    int gpio_num;        // GPIO pin number
+    int temperature;     // Temperature in Celsius
+    int humidity;        // Humidity percentage
+} dht11_t;
+```
+
+### Error Handling
+
+The implementation includes comprehensive error handling:
+
+- **Timeout Errors**: If the sensor doesn't respond within expected timeframes
+- **Checksum Validation**: Ensures data integrity by validating the received checksum
+- **Communication Errors**: Handles cases where the sensor doesn't follow the expected protocol
+- **Retry Mechanism**: Automatically retries failed readings with exponential backoff
+
+### Integration with Main Application
+
+The DHT11 sensor is integrated into the main application loop with:
+
+- **60-second reading interval**: Prevents over-polling the sensor
+- **RGB LED status indication**: Shows sensor errors with red color
+- **Automatic retry**: Continues operation even after read failures
+- **Logging**: Provides detailed information about sensor readings and errors
+
+### Timing Considerations
+
+The DHT11 protocol requires precise timing:
+
+- **Start Signal**: 20ms LOW, 30μs HIGH
+- **Response Window**: 80μs LOW, 80μs HIGH from sensor
+- **Data Bits**: Each bit represented by pulse width (30μs = 0, 70μs = 1)
+- **Reading Interval**: Minimum 1 second between readings
+- **Timeout Values**: Configurable via header file constants
 
 ### Design Notes
 
-- The use of FreeRTOS tasks and queues allows for responsive, event-driven application logic, making it easy to expand with new features (such as OTA updates or web server endpoints).
-- The modular structure separates event handling, initialization, and application logic, improving maintainability and clarity.
-- LED status indication provides immediate visual feedback for key application states, aiding in debugging and user experience.
+- The implementation uses ESP32's high-resolution timer (`esp_timer_get_time()`) for precise timing measurements
+- GPIO direction is dynamically switched between input and output during communication
+- The sensor requires a warm-up period after power-on before reliable readings can be obtained
+- Data validation includes both protocol timing checks and checksum verification
+- The implementation is thread-safe when used with proper FreeRTOS task scheduling
 
-Refer to the source code in `main/wifi_app.c` for further details and implementation specifics.
+### Troubleshooting
 
-1. `tasks_common.h`
+Common issues and solutions:
 
-   - This header file contains common definitions for the FreeRTOS tasks, including stack size, priority, and core ID for the WiFi application task.
-
-   ```c
-   #ifndef MAIN_TASKS_COMMON_H_
-   #define MAIN_TASKS_COMMON_H_
-
-   // WiFi application task
-   #define WIFI_APP_TASK_STACK_SIZE            4096
-   #define WIFI_APP_TASK_PRIORITY              5
-   #define WIFI_APP_TASK_CORE_ID               0
-
-   #endif /* MAIN_TASKS_COMMON_H_ */
-   ```
-
-2. `wifi_app.h`
-
-    - This header file defines the WiFi application settings
-    ```c
-    // WiFi application settings
-    #define WIFI_AP_SSID                "ESP32"             // AP name
-    #define WIFI_AP_PASSWORD            "password"          // AP password
-    #define WIFI_AP_CHANNEL             1                   // AP channe;
-    #define WIFI_AP_SSID_HIDDEN         0                   // AP visibility
-    #define WIFI_AP_MAX_CONNECTIONS     5                   // AP max connections
-    #define WIFI_AP_BEACON_INTERVAL     100                 // AP beacon: 100ms as recommend
-    #define WIFI_AP_IP                  "192.168.0.1"       // AP default ip
-    #define WIFI_AP_GATEWAY             "192.168.0.1"       // AP default gatewate (should be the same as the IP)
-    #define WIFI_AP_NETMASK             "255.255.2255.0"    // AP netmask
-    #define WIFI_AP_BANDWIDTH           WIFI_BW_HT20        // AP bandwidth 20 MHz (other option is 40 MHz) 
-    #define WIFI_STA_POWER_SAVE         WIFI_PS_NONE        // Power save is not used
-    #define MAX_SSID_LENGTH             32                  // IEEE stadard maximum
-    #define MAX_PASSWORD_LENGTH         64                  // IEEE stadard maximum
-    #define MAX_CONNECTION_RETRIES      5                   // Retry number on disconnect
-    ```
-
-    - The header file also contains the function prototypes for initializing the WiFi application and handling WiFi events.
-
-    ```c
-    /**
-     * Sends a message to the queque
-    * @param msgID message ID from the wifi_app_message_e enum.
-    * @return pdTRUE if an item was succesfully sent to the queue, otherwise pdFALSE.
-    * @note Expand the parameter list based on  your requiredments e.g. how you've expanded the wifi_app_queue_message_t
-    */
-    BaseType_t wifi_app_send_message(wifi_app_message_e msgID);
-
-    /**
-    * Starts the WiFi RROS task
-    */
-    void wifi_app_start(void);
-    ```
-
-    - We also define an enum for the WiFi application messages that can be sent to the queue.
-
-    ```c
-    /**
-    * Message IDs fot the WiFi application task
-    * @note Expand this based on thee application requirements
-    */
-    typedef enum wifi_app_message
-    {
-        WIFI_APP_MSG_START_HTTP_SERVER = 0,
-        WIFI_APP_MSG_CONNECTING_FROM_HTTP_SERVER,
-        WIFI_APP_MSG_STA_CONNECTED_GOT_IP,
-
-    } wifi_app_message_e;
-
-    /**
-    * Structure for the message queque
-    * @note Expand this based on the application requirements e.g. add another type and parameters as required
-    */
-    typedef struct  wifi_app_queue_message
-    {
-        wifi_app_message_e msgID;
-    } wifi_app_queue_message_t;
-    ```
+1. **Timeout Errors**: Check hardware connections and pull-up resistor
+2. **Checksum Failures**: Verify power supply stability and wire length
+3. **Intermittent Readings**: Ensure adequate delays between readings
+4. **No Response**: Check sensor power and GPIO pin configuration
 
 
 
