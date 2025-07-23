@@ -10,12 +10,62 @@
 #include "driver/ledc.h"
 #include "hal/ledc_types.h"
 #include "rgb_led.h"
-
+#include "freertos/FreeRTOS.h"
+#include "tasks_common.h"
+#include "esp_log.h"
 // RGB LED Info array
 ledc_info_t ledc_ch[RGB_LED_CHANNEL_NUM];
 
 // Handle for RGB LED PMW Init
 bool g_pmw_init_handle = false;
+
+static const char TAG [] = "LED";
+
+/**
+ * @brief Togges the red LED
+ * @param pvParameters parameter which can be passed to the task
+ */
+static void red_led_task(void *pvParameters)
+{
+    for (;;)
+    {
+        // Turn red on
+        ledc_set_duty(
+            ledc_ch[0].mode, 
+            ledc_ch[0].channel, 
+            RED_BLINK_ON_DUTY);
+        ledc_set_duty(
+            ledc_ch[1].mode, 
+            ledc_ch[1].channel, 
+            0);
+        ledc_set_duty(
+            ledc_ch[2].mode, 
+            ledc_ch[2].channel, 
+            0);
+        ledc_update_duty(
+            ledc_ch[0].mode, 
+            ledc_ch[0].channel);
+        ledc_update_duty(
+            ledc_ch[1].mode, 
+            ledc_ch[1].channel);
+        ledc_update_duty(
+            ledc_ch[2].mode, 
+            ledc_ch[2].channel);
+        ESP_LOGI(TAG, "LED: red light on");
+            vTaskDelay(pdMS_TO_TICKS(RED_BLINK_DELAY_MS));
+
+        // Turn red off
+        ledc_set_duty(
+            ledc_ch[0].mode, 
+            ledc_ch[0].channel, 
+            RED_BLINK_OFF_DUTY);
+        ledc_update_duty(
+            ledc_ch[0].mode, 
+            ledc_ch[0].channel);
+        ESP_LOGI(TAG, "LED: red light off");
+        vTaskDelay(pdMS_TO_TICKS(RED_BLINK_DELAY_MS));
+    }
+}
 
 /**
  * Initializes the RGB LED settings per channel, including
@@ -39,7 +89,7 @@ static void rgb_led_pmw_init(void)
 
     // Blue
 	ledc_ch[2].channel          = LEDC_CHANNEL_2;
-    ledc_ch[2].gpio             = RGB_LED_GREEN_GPIO;
+    ledc_ch[2].gpio             = RGB_LED_BLUE_GPIO;
     ledc_ch[2].mode             = LEDC_HIGH_SPEED_MODE;
     ledc_ch[2].timer_index     = LEDC_TIMER_0;
 
@@ -112,10 +162,40 @@ void rgb_led_http_server_started(void)
 
 void rgb_led_wifi_connected(void)
 {
-     if (g_pmw_init_handle == false)
+    if (g_pmw_init_handle == false)
     {
         rgb_led_pmw_init();
     }
     
     rgb_led_set_color(0, 255, 153);
+}
+
+void rgb_led_dht11_started(void)
+{
+    if (g_pmw_init_handle == false)
+    {
+        rgb_led_pmw_init();
+    }
+    
+    rgb_led_set_color(32, 66, 63);
+}
+
+void rgb_led_error(void)
+{
+
+    if (g_pmw_init_handle == false)
+    {
+        rgb_led_pmw_init();
+    }
+    xTaskCreatePinnedToCore(red_led_task, "red_led_task", DHT_SENSOR_TASK_STACK_SIZE, NULL, DHT_SENSOR_TASK_PRIORITY, NULL, DHT_SENSOR_TASK__CORE_ID);
+}
+
+void rgb_led_dht11_read()
+{
+    if (g_pmw_init_handle == false)
+    {
+        rgb_led_pmw_init();
+    }
+
+    rgb_led_set_color(147, 251, 255);
 }

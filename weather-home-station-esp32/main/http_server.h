@@ -15,7 +15,7 @@
 #define OTA_UPDATE_FAILED       -1
 
 /**
- * Messages for the HTTP monitor.
+ * @brief Messages for the HTTP monitor.
  */
 typedef enum http_server_message
 {
@@ -27,7 +27,7 @@ typedef enum http_server_message
 } http_server_message_e;
 
 /**
- * Structure for the message queue.
+ * @brief Structure for the message queue.
 */
 typedef struct http_server_queue_message
 {
@@ -35,7 +35,7 @@ typedef struct http_server_queue_message
 } http_server_queue_message_t;
 
 /**
- * Sends a message to the queue
+ * @brief Sends a message to the queue
  * @param msgID message ID from the http_server_message_e enum.
  * @return pdTRUE if an item was succesfully sent to the queue, otherwise pdFALSE.
  * @note Expand the parameters liszt based on your requirements.
@@ -43,17 +43,17 @@ typedef struct http_server_queue_message
 BaseType_t http_server_monitor_send_message(http_server_message_e msgID);
 
 /**
- * Starts the HTTP server.
+ * @brief Starts the HTTP server.
  */
 void http_server_start(void);
 
 /**
- * Stops the HTTP server.
+ * @brief Stops the HTTP server.
  */
 void http_server_stop(void);
 
 /**
- * Timer callback function which calls esp_restart upon successful firmware update.
+ * @brief Timer callback function which calls esp_restart upon successful firmware update.
  */
 void http_server_fw_update_reset_callback(void* args);
 

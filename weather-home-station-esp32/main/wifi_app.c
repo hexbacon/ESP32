@@ -30,7 +30,7 @@ esp_netif_t* esp_netif_sta = NULL;
 esp_netif_t* esp_netif_ap  = NULL;
 
 /**
- * WiFi application event handler
+ * @brief WiFi application event handler
  * @param arg data, aside from event data, that is passed to the handler when it is called
  * @param event_base the base id of the event to register the handler for
  * @param event_id the id fo the event to register the handler for
@@ -84,7 +84,7 @@ static void wifi_app_event_handler(void *arg, esp_event_base_t event_base, int32
 }
 
 /**
- * Initializes the WiFi application event handler for WiFi and IP events.
+ * @brief Initializes the WiFi application event handler for WiFi and IP events.
  */
 static void wifi_app_event_handler_init(void)
 {
@@ -99,7 +99,7 @@ static void wifi_app_event_handler_init(void)
 }
 
 /**
- * Initializes the TCP stack and default WiFi configuration.
+ * @brief Initializes the TCP stack and default WiFi configuration.
  */
 static void wifi_app_default_wifi_init(void)
 {
@@ -115,7 +115,7 @@ static void wifi_app_default_wifi_init(void)
 }
 
 /**
- * Configures the WiFi access point settings and assigns the static IP to the SoftAP.
+ * @brief Configures the WiFi access point settings and assigns the static IP to the SoftAP.
  */
 static void wifi_app_soft_ap_config(void)
 {
@@ -153,7 +153,7 @@ static void wifi_app_soft_ap_config(void)
 }
 
 /**
- * Main task for the WiFi application
+ * @brief Main task for the WiFi application
  * @param pvParameters parameter which can be passed to the task
  */
 static void wifi_app_task(void *pvParameters)

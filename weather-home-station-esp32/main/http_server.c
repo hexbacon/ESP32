@@ -55,7 +55,7 @@ extern const uint8_t favicon_ico_start[] asm("_binary_favicon_ico_start");
 extern const uint8_t favicon_ico_end[] asm("_binary_favicon_ico_end");
 
 /**
- * Checks the g_fw_update_status and creates the fw_update_reset timer if g_fw_update_status is true.
+ * @brief Checks the g_fw_update_status and creates the fw_update_reset timer if g_fw_update_status is true.
  */
 void http_server_fw_reset_timer(void)
 {
@@ -75,7 +75,7 @@ void http_server_fw_reset_timer(void)
 }
 
 /**
- * HTTP seerver monitor task used to track events of the HTTP server.
+ * @brief HTTP seerver monitor task used to track events of the HTTP server.
  * @param pvParameters parameter which can be passed to the task.
  */
 static void http_server_monitor(void *pvParameters)
@@ -122,7 +122,7 @@ static void http_server_monitor(void *pvParameters)
 }
 
 /**
- * JQuery get handler is requested when accessing the webpage.
+ * @brief JQuery get handler is requested when accessing the webpage.
  * @param req HTTP request for which the uri needs to be handled.
  * @return ESP_OK
  */
@@ -137,7 +137,7 @@ static esp_err_t http_server_jquery_handler(httpd_req_t *req)
 }
 
 /**
- * Sends the index.html page.
+ * @brief Sends the index.html page.
  * @param req HTTP request for which the uri needs to be handled.
  * @return ESP_OK
  */
@@ -152,7 +152,7 @@ static esp_err_t http_server_index_html_handler(httpd_req_t *req)
 }
 
 /**
- * app.css get handler is requested when accessing the webpage.
+ * @brief app.css get handler is requested when accessing the webpage.
  * @param req HTTP request for which the uri needs to be handled.
  * @return ESP_OK
  */
@@ -167,7 +167,7 @@ static esp_err_t http_server_app_css_handler(httpd_req_t *req)
 }
 
 /**
- * app.js get handler is requested when accessing the webpage.
+ * @brief app.js get handler is requested when accessing the webpage.
  * @param req HTTP request for which the uri needs to be handled.
  * @return ESP_OK
  */
@@ -182,7 +182,7 @@ static esp_err_t http_server_app_js_handler(httpd_req_t *req)
 }
 
 /**
- * Sends the .ico (icon) file when accessing the web page.
+ * @brief Sends the .ico (icon) file when accessing the web page.
  * @param req HTTP request for which the uri needs to be handled.
  * @return ESP_OK
  */
@@ -197,7 +197,7 @@ static esp_err_t http_server_favicon_ico_handler(httpd_req_t *req)
 }
 
 /**
- * Recieves the .bin file via the webpage and handle the firmware update.
+ * @brief Recieves the .bin file via the webpage and handle the firmware update.
  * @param req HTTP request for which the uri needs to be handled.
  * @return ESP_OK, otherwise ESP_FAIL if timeout occurs or update cannot be started.
  */
@@ -288,7 +288,7 @@ esp_err_t http_server_OTA_update_handler(httpd_req_t *req)
 }
 
 /**
- * OTA status handler responds with the firmware update status after the OTA update is started
+ * @brief OTA status handler responds with the firmware update status after the OTA update is started
  * and responds with the compiled time/date when the pafe is first requested.
  * @param req HTTP reqquest for which the uri needs to be handled.
  * @return ESP_OK
@@ -309,7 +309,7 @@ esp_err_t http_server_OTA_status_handler(httpd_req_t *req)
 
 
 /**
- * Sets up the default httpd server configuration
+ * @brief Sets up the default httpd server configuration
  * @return http server instance handle if successful, NULL otherwise.
  */
 static httpd_handle_t http_server_configure(void)

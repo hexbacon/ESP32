@@ -31,7 +31,7 @@ extern esp_netif_t* esp_netif_sta;
 extern esp_netif_t* esp_netif_ap;
 
 /**
- * Message IDs fot the WiFi application task
+ * @brief Message IDs fot the WiFi application task
  * @note Expand this based on thee application requirements
  */
 typedef enum wifi_app_message
@@ -43,7 +43,7 @@ typedef enum wifi_app_message
 } wifi_app_message_e;
 
 /**
- * Structure for the message queque
+ * @brief Structure for the message queque
  * @note Expand this based on the application requirements e.g. add another type and parameters as required
  */
 typedef struct  wifi_app_queue_message
@@ -52,7 +52,7 @@ typedef struct  wifi_app_queue_message
 } wifi_app_queue_message_t;
 
 /**
- * Sends a message to the queque
+ * @brief Sends a message to the queque
  * @param msgID message ID from the wifi_app_message_e enum.
  * @return pdTRUE if an item was succesfully sent to the queue, otherwise pdFALSE.
  * @note Expand the parameter list based on  your requiredments e.g. how you've expanded the wifi_app_queue_message_t
@@ -60,7 +60,7 @@ typedef struct  wifi_app_queue_message
 BaseType_t wifi_app_send_message(wifi_app_message_e msgID);
 
 /**
- * Starts the WiFi RROS task
+ * @brief Starts the WiFi RROS task
  */
 void wifi_app_start(void);
 
