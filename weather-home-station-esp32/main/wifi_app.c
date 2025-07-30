@@ -1,8 +1,16 @@
-/*
- * wifi_app.c
+/**
+ * @file wifi_app.c
+ * @brief WiFi Application Implementation for ESP32 Weather Station
+ * @details This file implements the WiFi management functionality for the ESP32
+ *          weather station project. It provides dual-mode WiFi operation with
+ *          Access Point for initial configuration and Station mode for internet
+ *          connectivity. The implementation includes event handling, network
+ *          interface management, connection retry logic, and seamless switching
+ *          between AP and STA modes for robust wireless connectivity.
  *
- *  Created on: Jul 15, 2025
- *      Author: christophermena
+ * @author christophermena
+ * @date July 30, 2025
+ * @version 2.0
  */
 
 #include "freertos/FreeRTOS.h"

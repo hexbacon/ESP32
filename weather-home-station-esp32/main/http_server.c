@@ -1,8 +1,16 @@
-/*
- * http_sever.c
+/**
+ * @file http_server.c
+ * @brief HTTP Server Implementation for ESP32 Weather Station
+ * @details This file implements the HTTP web server functionality for the ESP32
+ *          weather station, including static file serving, API endpoints for
+ *          weather data, OTA firmware update handling, and client request
+ *          processing. The server provides a comprehensive web interface for
+ *          weather data visualization, system configuration, and remote
+ *          management capabilities with WebSocket support for real-time updates.
  *
- *  Created on: Jul 16, 2025
- *      Author: christophermena
+ * @author christophermena
+ * @date July 30, 2025
+ * @version 2.0
  */
 
 #include <stdbool.h>
@@ -25,7 +33,7 @@ static int g_fw_update_status = OTA_UPDATE_PENDING;
 // HTTP server task handle
 static httpd_handle_t http_server_handle = NULL;
 
-// HTPP server monitor task handle
+// HTTP server monitor task handle
 static TaskHandle_t task_http_server_monitor = NULL;
 
 // Queue handle used to manipulate the queue of events
@@ -197,7 +205,7 @@ static esp_err_t http_server_favicon_ico_handler(httpd_req_t *req)
 }
 
 /**
- * @brief Recieves the .bin file via the webpage and handle the firmware update.
+ * @brief Receives the .bin file via the webpage and handle the firmware update.
  * @param req HTTP request for which the uri needs to be handled.
  * @return ESP_OK, otherwise ESP_FAIL if timeout occurs or update cannot be started.
  */
@@ -339,7 +347,7 @@ static httpd_handle_t http_server_configure(void)
     config.recv_wait_timeout = 10;
     config.send_wait_timeout = 10;
 
-    ESP_LOGI(TAG, "htpp_server_configure: Starting server on port: '%d' with task priority '%d'", config.ctrl_port, config.task_priority);
+    ESP_LOGI(TAG, "http_server_configure: Starting server on port: '%d' with task priority '%d'", config.ctrl_port, config.task_priority);
 
     // Start the httpd server
     if (httpd_start(&http_server_handle, &config) == ESP_OK)

@@ -1,8 +1,16 @@
-/*
- * DHT11.c
+/**
+ * @file DHT11.c
+ * @brief DHT11 Temperature and Humidity Sensor Driver Implementation
+ * @details This file implements the DHT11 sensor driver for the ESP32 weather
+ *          station project. It provides complete functionality for reading
+ *          temperature and humidity data from the DHT11 sensor using single-wire
+ *          communication protocol. The implementation includes timing-critical
+ *          operations, checksum validation, retry logic, and temperature unit
+ *          conversion utilities for robust environmental data acquisition.
  *
- *  Created on: Jul 16, 2025
- *      Author: christophermena
+ * @author christophermena
+ * @date July 30, 2025
+ * @version 2.0
  */
 
 #include "DHT11.h"

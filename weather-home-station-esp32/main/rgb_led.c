@@ -1,8 +1,16 @@
-/*
- * rgb_led.c
+/**
+ * @file rgb_led.c
+ * @brief RGB LED Status Indicator Implementation for ESP32 Weather Station
+ * @details This file implements RGB LED functionality for the ESP32 weather
+ *          station project. It provides visual status indicators using PWM-
+ *          controlled RGB LED to display system states including WiFi status,
+ *          sensor operation, server status, and error conditions. The
+ *          implementation uses ESP32's LEDC peripheral for smooth color
+ *          transitions and precise brightness control.
  *
- *  Created on: Jul 15, 2025
- *      Author: christophermena
+ * @author christophermena
+ * @date July 30, 2025
+ * @version 2.0
  */
 
 #include <stdbool.h>
@@ -187,7 +195,7 @@ void rgb_led_error(void)
     {
         rgb_led_pmw_init();
     }
-    xTaskCreatePinnedToCore(red_led_task, "red_led_task", DHT_SENSOR_TASK_STACK_SIZE, NULL, DHT_SENSOR_TASK_PRIORITY, NULL, DHT_SENSOR_TASK__CORE_ID);
+    xTaskCreatePinnedToCore(red_led_task, "red_led_task", DHT_SENSOR_TASK_STACK_SIZE, NULL, DHT_SENSOR_TASK_PRIORITY, NULL, DHT_SENSOR_TASK_CORE_ID);
 }
 
 void rgb_led_dht11_read()
